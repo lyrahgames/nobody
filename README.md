@@ -21,6 +21,7 @@ In the directory 'build' run the following.
 ## Dependencies
 - ![OpenGL](https://www.opengl.org/)
 - ![GLUT](https://www.opengl.org/resources/libraries/glut/)
+- ![Eigen 3.3](http://eigen.tuxfamily.org/index.php?title=Main_Page)
 
 ## Contributing
 - ![Google C++ Style Guide](https://google.github.io/styleguide/cppguide.html)
