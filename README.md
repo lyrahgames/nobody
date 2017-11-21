@@ -19,6 +19,8 @@ In the directory 'build' run the following.
     ./nobody
 
 ## Dependencies
+- ![OpenGL](https://www.opengl.org/)
+- ![GLUT](https://www.opengl.org/resources/libraries/glut/)
 
 ## Contributing
 - ![Google C++ Style Guide](https://google.github.io/styleguide/cppguide.html)
