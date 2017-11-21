@@ -13,7 +13,7 @@ if (DEVELOPER_MODE)
   endif()
 endif (DEVELOPER_MODE)
 
-add_executable(nobody src/main.cc)
+add_executable(nobody src/main.cc src/euler_integrator.cc)
 
 set_property(TARGET nobody PROPERTY CXX_STANDARD 14)
 

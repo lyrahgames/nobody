@@ -1,6 +1,37 @@
 #include <GL/glut.h>
 #include <Eigen/Core>
 #include <iostream>
+#include <random>
+#include <vector>
+
+#include "euler_integrator.h"
+
+nobody::Particle* particle;
+int particle_count;
+float time_step;
+
+void init() {
+  using nobody::Particle;
+
+  std::mt19937 rng(std::random_device{}());
+  std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
+
+  particle_count = 1000;
+
+  particle = new Particle[particle_count];
+
+  for (int i = 0; i < particle_count; i++) {
+    particle[i].position = 2.0f * nobody::VectorF3(dist(rng), dist(rng), 1.0f);
+    particle[i].velocity = 0.0f * nobody::VectorF3(dist(rng), dist(rng), 0.0f);
+    particle[i].mass = 1.0f / particle_count;
+  }
+
+  // particle[0].mass = 100.0f;
+  // particle[0].position = nobody::VectorF3(0, 0, 0);
+  // particle[0].velocity = nobody::VectorF3(0, 0, 0);
+
+  time_step = 0.5f;
+}
 
 void opengl_init() { glPointSize(5.0f); }
 
@@ -13,13 +44,15 @@ void render_scene() {
   gluLookAt(0.0f, 0.0f, 10.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
   glRotatef(angle, 0.0f, 0.1f, 0.0f);
 
-  glBegin(GL_TRIANGLES);
-  glVertex3f(-2.0f, -2.0f, 0.0f);
-  glVertex3f(2.0f, 0.0f, 0.0f);
-  glVertex3f(0.0f, 2.0f, 0.0f);
+  glBegin(GL_POINTS);
+  for (int i = 0; i < particle_count; i++) {
+    glVertex3f(particle[i].position(0), particle[i].position(1),
+               particle[i].position(2));
+  }
   glEnd();
 
-  angle += 0.001f;
+  // angle += 0.005f;
+  nobody::euler_integrator(particle, particle_count, time_step);
 
   glutSwapBuffers();
 }
@@ -32,7 +65,7 @@ void change_size(int w, int h) {
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
   glViewport(0, 0, w, h);
-  gluPerspective(45.0f, ratio, 0.1f, 100.0f);
+  gluPerspective(45.0f, ratio, 0.1f, 1000.0f);
   glMatrixMode(GL_MODELVIEW);
 }
 
@@ -61,6 +94,7 @@ int main(int argc, char** argv) {
   glutIdleFunc(render_scene);
 
   opengl_init();
+  init();
 
   glutMainLoop();
 }
