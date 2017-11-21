@@ -1,5 +1,8 @@
 #include <GL/glut.h>
+#include <Eigen/Core>
 #include <iostream>
+
+void opengl_init() { glPointSize(5.0f); }
 
 void render_scene() {
   static float angle = 0.0f;
@@ -34,17 +37,30 @@ void change_size(int w, int h) {
 }
 
 int main(int argc, char** argv) {
-  std::cout << "Test run for OpenGL and GLUT." << std::endl;
+  std::cout << "Eigen3 test run:" << std::endl;
+
+  Eigen::Matrix3d m = Eigen::Matrix3d::Random();
+  Eigen::Vector3d v(1, 2, 3);
+  std::cout << m << std::endl
+            << "*" << std::endl
+            << v << std::endl
+            << "=" << std::endl
+            << m * v << std::endl
+            << std::endl;
+
+  std::cout << "OpenGL and GLUT test run..." << std::endl;
 
   glutInit(&argc, argv);
   glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
   glutInitWindowPosition(100, 100);
   glutInitWindowSize(320, 320);
-  glutCreateWindow("OpenGL and GLUT testrun");
+  glutCreateWindow("OpenGL and GLUT test run");
 
   glutDisplayFunc(render_scene);
   glutReshapeFunc(change_size);
   glutIdleFunc(render_scene);
+
+  opengl_init();
 
   glutMainLoop();
 }
