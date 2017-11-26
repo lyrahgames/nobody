@@ -2,18 +2,7 @@ cmake_minimum_required(VERSION 3.0.0)
 
 project(nobody VERSION 0.1)
 
-option(DEVELOPER_MODE "Use compiler flags for development and diagnostics" OFF)
-if (DEVELOPER_MODE)
-  if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror -Wall -pedantic -ansi")
-  elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror-all -Wall -ansi")
-  elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror -Wall -Wextra -pedantic")
-  endif()
-endif (DEVELOPER_MODE)
-
-add_executable(nobody src/main.cc src/euler_integrator.cc)
+add_executable(nobody src/main.cc src/euler_integrator.cc src/glut_app.cc)
 
 set_property(TARGET nobody PROPERTY CXX_STANDARD 14)
 

@@ -9,7 +9,7 @@ namespace nobody {
 constexpr float gravitation_const = 0.0001f;
 constexpr float softening_param = 1e-7f;
 
-void euler_integrator(Particle *particle, int particle_count, float dt);
+void euler_integrator(particle *particles, int particle_count, float dt);
 
 }  // namespace nobody
 

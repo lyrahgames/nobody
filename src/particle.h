@@ -5,7 +5,7 @@
 
 namespace nobody {
 
-struct Particle {
+struct particle {
   VectorF3 position;
   VectorF3 velocity;
   float mass;
