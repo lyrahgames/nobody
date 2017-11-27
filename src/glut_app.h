@@ -3,6 +3,7 @@
 
 #include <GL/freeglut.h>
 #include <Eigen/Dense>
+#include <chrono>
 #include <cmath>
 #include <iostream>
 #include <random>
@@ -28,6 +29,10 @@ extern Eigen::Vector3f world_up;
 extern float world_cube_size;
 extern Eigen::Vector2i old_mouse;
 extern int key_modifiers;
+extern int fps_frame_count;
+extern float fps_time_bound;
+extern std::chrono::time_point<std::chrono::system_clock> fps_current_time;
+extern std::chrono::time_point<std::chrono::system_clock> fps_last_time;
 
 void init(int argc, char** argv);
 void exec();

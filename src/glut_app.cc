@@ -16,6 +16,12 @@ Eigen::Vector3f world_up = Eigen::Vector3f(0.0f, 1.0f, 0.0f);
 float world_cube_size = 1.0f;
 Eigen::Vector2i old_mouse(0, 0);
 int key_modifiers;
+int fps_frame_count = 0;
+float fps_time_bound = 1.0f;
+std::chrono::time_point<std::chrono::system_clock> fps_current_time =
+    std::chrono::system_clock::now();
+std::chrono::time_point<std::chrono::system_clock> fps_last_time =
+    std::chrono::system_clock::now();
 
 void init(int argc, char** argv) {
   glutInit(&argc, argv);
@@ -43,7 +49,7 @@ void init(int argc, char** argv) {
   glPointSize(8.0f);
 
   // init random particle data
-  particle_vector.resize(1000);
+  particle_vector.resize(10000);
 
   std::mt19937 rng(std::random_device{}());
   std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
@@ -83,6 +89,20 @@ void resize(int width, int height) {
 }
 
 void render() {
+  // compute fps
+  fps_current_time = std::chrono::system_clock::now();
+  fps_frame_count++;
+  const float delta_time =
+      std::chrono::duration<float>(fps_current_time - fps_last_time).count();
+  if (delta_time >= 1.0f) {
+    std::cout << "frame time: "
+              << delta_time / static_cast<float>(fps_frame_count)
+              << "s\tfps: " << static_cast<float>(fps_frame_count) / delta_time
+              << std::endl;
+    fps_frame_count = 0;
+    fps_last_time = fps_current_time;
+  }
+
   // compute camera position
   camera_direction = Eigen::Vector3f(
       cosf(camera_azimuth) * cosf(camera_altitude), sinf(camera_altitude),

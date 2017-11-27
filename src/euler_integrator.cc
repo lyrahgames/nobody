@@ -4,6 +4,7 @@ namespace nobody {
 
 void euler_integrator(particle *particles, int particle_count,
                       float time_step) {
+#pragma omp parallel for schedule(guided)
   for (int i = 0; i < particle_count; i++) {
     VectorF3 acceleration(0, 0, 0);
 
