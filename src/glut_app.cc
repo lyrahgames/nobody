@@ -43,7 +43,7 @@ void init(int argc, char** argv) {
   glPointSize(8.0f);
 
   // init random particle data
-  particle_vector.resize(100);
+  particle_vector.resize(1000);
 
   std::mt19937 rng(std::random_device{}());
   std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
@@ -104,7 +104,7 @@ void render() {
     const float distance =
         (particle_vector[i].position - camera_position).norm();
 
-    glPointSize(100.0f * cbrtf(particle_vector[i].mass) / distance);
+    glPointSize(200.0f * cbrtf(particle_vector[i].mass) / distance);
 
     glBegin(GL_POINTS);
     glColor3f(0.2f, 0.2f, 0.2f);
@@ -194,11 +194,16 @@ void process_mouse_move(int x, int y) {
   switch (key_modifiers) {
     case GLUT_ACTIVE_CTRL:
       camera_distance += static_cast<float>(y - old_mouse(1)) * 0.1f;
+      if (camera_distance < 0.0f) camera_distance = 0.0f;
       break;
 
     default:
       camera_azimuth += static_cast<float>(x - old_mouse(0)) * 0.01f;
       camera_altitude += static_cast<float>(y - old_mouse(1)) * 0.01f;
+      if (camera_altitude > M_PI_2 - 0.0001f)
+        camera_altitude = M_PI_2 - 0.0001f;
+      if (camera_altitude < -M_PI_2 + 0.0001f)
+        camera_altitude = -M_PI_2 + 0.0001f;
   }
 
   old_mouse = Eigen::Vector2i(x, y);
