@@ -1,6 +1,7 @@
 #ifndef NOBODY_EULER_INTEGRATOR_H_
 #define NOBODY_EULER_INTEGRATOR_H_
 
+#include <omp.h>
 #include "particle.h"
 #include "util.h"
 
