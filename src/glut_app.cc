@@ -1,12 +1,16 @@
 #include "glut_app.h"
 #include <algorithm>
+#include <list>
 #include "particle_loader.h"
 
 namespace nobody {
 namespace glut_app {
 
+static constexpr unsigned char glut_key_p = 112;
+static constexpr unsigned char glut_key_l = 108;
+
 static std::vector<particle> particle_vector;
-static float time_step = 0.000005f;
+static float time_step = 0.0005f;
 // Eigen::Vector3f camera_position = Eigen::Vector3f(0.0f, 0.0f, 10.0f);
 // Eigen::Vector3f camera_direction;
 static float camera_altitude = 0.0f;
@@ -28,9 +32,14 @@ static std::chrono::time_point<std::chrono::system_clock> fps_last_time =
 static int old_mouse_x{};
 static int old_mouse_y{};
 static bool paused = false;
+static bool render_particles = true;
+static bool render_particle_paths = true;
 static Camera camera(400, 400, M_PI_2);
 static Orthonormal_frame world =
-    opengl_orthonormal_frame(Eigen::Vector3f(0, 0, 0));
+    blender_orthonormal_frame(Eigen::Vector3f(0, 0, 0));
+
+// static std::list<Eigen::Vector3f> particle_path;
+static std::vector<std::list<Eigen::Vector3f>> particle_path_data;
 
 void init(int argc, char** argv) {
   glutInit(&argc, argv);
@@ -85,6 +94,7 @@ void init(int argc, char** argv) {
   }
 
   particle_vector = particle_system(std::string(argv[1]));
+  particle_path_data.resize(particle_vector.size());
 }
 
 void exec() { glutMainLoop(); }
@@ -132,24 +142,38 @@ void render() {
   //           world_center(0), world_center(1), world_center(2), world_up(0),
   //           world_up(1), world_up(2));
 
+  glLineWidth(1.0f);
   glColor3f(0, 0, 0);
   glutWireCube(world_cube_size);
 
-  for (int i = 0; i < static_cast<int>(particle_vector.size()); ++i) {
-    const float distance =
-        (particle_vector[i].position - camera.position()).norm();
+  if (render_particle_paths) {
+    glLineWidth(1.5f);
+    for (std::size_t i = 0; i < particle_path_data.size(); ++i) {
+      const auto& particle_path = particle_path_data[i];
+      glBegin(GL_LINE_STRIP);
+      for (const auto& point : particle_path) glVertex3fv(point.data());
+      glVertex3fv(particle_vector[i].position.data());
+      glEnd();
+    }
+  }
 
-    const float brightness = std::min(0.7f, 1.0f / (distance * distance));
+  if (render_particles) {
+    for (int i = 0; i < static_cast<int>(particle_vector.size()); ++i) {
+      const float distance =
+          (particle_vector[i].position - camera.position()).norm();
 
-    glPointSize(std::max(0.005f / camera.pixel_size() *
-                             (cbrtf(particle_vector[i].mass) / (distance)),
-                         5.0f));
+      const float brightness = std::min(0.7f, 1.0f / (distance * distance));
 
-    glBegin(GL_POINTS);
-    glColor3f(brightness, brightness, brightness);
-    glVertex3f(particle_vector[i].position(0), particle_vector[i].position(1),
-               particle_vector[i].position(2));
-    glEnd();
+      glPointSize(std::max(0.005f / camera.pixel_size() *
+                               (cbrtf(particle_vector[i].mass) / (distance)),
+                           5.0f));
+
+      glBegin(GL_POINTS);
+      glColor3f(brightness, brightness, brightness);
+      glVertex3f(particle_vector[i].position(0), particle_vector[i].position(1),
+                 particle_vector[i].position(2));
+      glEnd();
+    }
   }
 
   glutSwapBuffers();
@@ -161,7 +185,33 @@ void idle() {
                    static_cast<int>(particle_vector.size()), time_step);
   // rk4_integrator(particle_vector.data(),
   //                static_cast<int>(particle_vector.size()), time_step);
+
   // world.set_origin(particle_vector[0].position);
+
+  for (std::size_t i = 0; i < particle_path_data.size(); ++i) {
+    auto& particle_path = particle_path_data[i];
+
+    if (particle_path.size() < 2)
+      particle_path.push_back(particle_vector[i].position);
+    else {
+      auto p = particle_path.end();
+      --p;
+      --p;
+      const Eigen::Vector3f last = particle_path.back() - *p;
+      const Eigen::Vector3f next =
+          particle_vector[i].position - particle_path.back();
+      const float distance = next.norm();
+      const float cos_angle = next.dot(last) / (distance * last.norm());
+      if (cos_angle < 0.9999f) {
+        particle_path.push_back(particle_vector[i].position);
+        // std::cout << "added position to path: " << particle_path.size()
+        // << std::endl;
+      }
+
+      if (particle_path.size() > 512) particle_path.pop_front();
+    }
+  }
+
   glutPostRedisplay();
 }
 
@@ -173,6 +223,14 @@ void process_normal_keys(unsigned char key, int x, int y) {
 
     case glut_key_space:
       paused = !paused;
+      break;
+
+    case glut_key_p:
+      render_particles = !render_particles;
+      break;
+
+    case glut_key_l:
+      render_particle_paths = !render_particle_paths;
       break;
   }
 }
