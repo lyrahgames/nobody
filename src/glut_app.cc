@@ -10,7 +10,7 @@ static constexpr unsigned char glut_key_p = 112;
 static constexpr unsigned char glut_key_l = 108;
 
 static std::vector<particle> particle_vector;
-static float time_step = 0.0005f;
+static float time_step = 0.00005f;
 // Eigen::Vector3f camera_position = Eigen::Vector3f(0.0f, 0.0f, 10.0f);
 // Eigen::Vector3f camera_direction;
 static float camera_altitude = 0.0f;
@@ -31,12 +31,17 @@ static std::chrono::time_point<std::chrono::system_clock> fps_last_time =
 
 static int old_mouse_x{};
 static int old_mouse_y{};
+static bool mouse_left_pressed = false;
+static bool mouse_right_pressed = false;
 static bool paused = false;
 static bool render_particles = true;
 static bool render_particle_paths = true;
 static Camera camera(400, 400, M_PI_2);
 static Orthonormal_frame world =
     blender_orthonormal_frame(Eigen::Vector3f(0, 0, 0));
+
+static float time = 0.0f;
+static float time_tmp = 0.0f;
 
 // static std::list<Eigen::Vector3f> particle_path;
 static std::vector<std::list<Eigen::Vector3f>> particle_path_data;
@@ -108,8 +113,8 @@ void resize(int width, int height) {
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
   glViewport(0, 0, camera.screen_width(), camera.screen_height());
-  gluPerspective(camera.opengl_field_of_view(), camera.aspect_ratio(), 0.1f,
-                 1000.0f);
+  gluPerspective(camera.opengl_field_of_view(), camera.aspect_ratio(), 1e-5f,
+                 1e5f);
   glMatrixMode(GL_MODELVIEW);
 }
 
@@ -124,6 +129,9 @@ void render() {
               << delta_time / static_cast<float>(fps_frame_count)
               << "s\tfps: " << static_cast<float>(fps_frame_count) / delta_time
               << std::endl;
+    std::cout << "simulation time = " << time << " years" << std::endl;
+    std::cout << "time step = " << time_step << " years" << std::endl;
+    std::cout << std::endl;
     fps_frame_count = 0;
     fps_last_time = fps_current_time;
   }
@@ -181,12 +189,20 @@ void render() {
 
 void idle() {
   if (paused) return;
-  euler_integrator(particle_vector.data(),
-                   static_cast<int>(particle_vector.size()), time_step);
-  // rk4_integrator(particle_vector.data(),
-  //                static_cast<int>(particle_vector.size()), time_step);
+  // euler_integrator(particle_vector.data(),
+  //                  static_cast<int>(particle_vector.size()), time_step);
+  rk4_integrator(particle_vector.data(),
+                 static_cast<int>(particle_vector.size()), time_step);
 
   // world.set_origin(particle_vector[0].position);
+
+  time_tmp += time_step;
+  if (time_tmp >= 5.0f) {
+    time += time_tmp;
+    time_tmp = 0.0f;
+    // paused = true;
+    // std::cout << "time = " << time << " years" << std::endl;
+  }
 
   for (std::size_t i = 0; i < particle_path_data.size(); ++i) {
     auto& particle_path = particle_path_data[i];
@@ -233,6 +249,8 @@ void process_normal_keys(unsigned char key, int x, int y) {
       render_particle_paths = !render_particle_paths;
       break;
   }
+
+  glutPostRedisplay();
 }
 
 void process_special_keys(int key, int x, int y) {
@@ -266,10 +284,25 @@ void process_special_keys(int key, int x, int y) {
       }
       break;
   }
+
+  glutPostRedisplay();
 }
 
 void process_mouse_buttons(int button, int button_state, int x, int y) {
   key_modifiers = glutGetModifiers();
+
+  if ((button == GLUT_LEFT_BUTTON) && (button_state == GLUT_DOWN)) {
+    mouse_left_pressed = true;
+  }
+  if ((button == GLUT_LEFT_BUTTON) && (button_state == GLUT_UP)) {
+    mouse_left_pressed = false;
+  }
+  if ((button == GLUT_RIGHT_BUTTON) && (button_state == GLUT_DOWN)) {
+    mouse_right_pressed = true;
+  }
+  if ((button == GLUT_RIGHT_BUTTON) && (button_state == GLUT_UP)) {
+    mouse_right_pressed = false;
+  }
 }
 
 void process_mouse_move(int x, int y) {
@@ -278,8 +311,13 @@ void process_mouse_move(int x, int y) {
 
   switch (key_modifiers) {
     case GLUT_ACTIVE_CTRL:
-      camera_distance += 0.02f * y_difference * camera_distance;
-      if (camera_distance < 1e-5f) camera_distance = 1e-5f;
+      if (mouse_left_pressed) {
+        camera_distance += 0.02f * y_difference * camera_distance;
+        if (camera_distance < 1e-5f) camera_distance = 1e-5f;
+      } else if (mouse_right_pressed) {
+        time_step += 0.02f * y_difference * time_step;
+        if (time_step < 1e-6f) time_step = 1e-6f;
+      }
       break;
 
     // moving
@@ -302,13 +340,11 @@ void process_mouse_move(int x, int y) {
 
   compute_camera_frame();
 
-  // old_mouse = Eigen::Vector2i(x, y);
   old_mouse_x = x;
   old_mouse_y = y;
 }
 
 void process_passive_mouse_move(int x, int y) {
-  // old_mouse = Eigen::Vector2i(x, y);
   old_mouse_x = x;
   old_mouse_y = y;
 }
