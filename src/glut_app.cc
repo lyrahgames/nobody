@@ -71,34 +71,34 @@ void init(int argc, char** argv) {
   glEnable(GL_POINT_SMOOTH);
   glPointSize(8.0f);
 
-  // init random particle data
-  // particle_vector.resize(1000);
-
-  // std::mt19937 rng(std::random_device{}());
-  // std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
-
-  // for (int i = 0; i < static_cast<int>(particle_vector.size()); ++i) {
-  //   particle_vector[i].position =
-  //       Eigen::Vector3f(dist(rng), dist(rng), dist(rng));
-  //   particle_vector[i].velocity =
-  //       0.01f * Eigen::Vector3f(dist(rng), dist(rng), dist(rng));
-  //   particle_vector[i].mass = 0.1f / particle_vector.size();
-  // }
-
-  // particle_vector[0].mass = 10.0f;
-  // particle_vector[0].position = Eigen::Vector3f(-1, 0, 0);
-  // particle_vector[0].velocity = Eigen::Vector3f(0, 0.02, 0);
-
-  // particle_vector[1].mass = 10.0f;
-  // particle_vector[1].position = Eigen::Vector3f(1, 0, 0);
-  // particle_vector[1].velocity = Eigen::Vector3f(0, -0.02, 0);
-
   if (2 != argc) {
     std::cout << "GEBE EINEN Dateipfad AN DU ARSCHLOCH!" << std::endl;
-    exit(-1);
+    // exit(-1);
+    // init random particle data
+    particle_vector.resize(100);
+
+    std::mt19937 rng(std::random_device{}());
+    std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
+
+    for (int i = 0; i < static_cast<int>(particle_vector.size()); ++i) {
+      particle_vector[i].position =
+          Eigen::Vector3f(dist(rng), dist(rng), dist(rng));
+      particle_vector[i].velocity =
+          0.01f * Eigen::Vector3f(dist(rng), dist(rng), dist(rng));
+      particle_vector[i].mass = 0.1f / particle_vector.size();
+    }
+
+    particle_vector[0].mass = 100.0f;
+    particle_vector[0].position = Eigen::Vector3f(-1, 0, 0);
+    particle_vector[0].velocity = Eigen::Vector3f(0, 0.02, 0);
+
+    particle_vector[1].mass = 100.0f;
+    particle_vector[1].position = Eigen::Vector3f(1, 0, 0);
+    particle_vector[1].velocity = Eigen::Vector3f(0, -0.02, 0);
+  } else {
+    particle_vector = particle_system(std::string(argv[1]));
   }
 
-  particle_vector = particle_system(std::string(argv[1]));
   particle_path_data.resize(particle_vector.size());
 }
 
