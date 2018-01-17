@@ -21,6 +21,11 @@ Eigen::Vector3f particle_acceleration(const std::vector<particle> &particles,
                                       int index);
 void rk4_integrator(std::vector<particle> *particles, float dt);
 
+void leapfrog_integrator(std::vector<particle> *particles, float dt);
+
+void leapfrog_adaptive_integrator(std::vector<particle> *particles,
+                                  float &time);
+
 }  // namespace nobody
 
 #endif  // RUNGE_KUTTA_INTEGRATOR_H_

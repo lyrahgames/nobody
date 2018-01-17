@@ -1,4 +1,5 @@
 #include "runge_kutta_integrator.h"
+#include <iostream>
 
 namespace nobody {
 
@@ -88,7 +89,7 @@ Eigen::Vector3f particle_acceleration(const std::vector<particle> &particles,
         p.mass / (distance * squared_distance + softening_param);
     acceleration += scale * direction;
   }
-  return -(acceleration *= gravitation_const);
+  return (acceleration *= gravitation_const);
 }
 
 void rk4_integrator(std::vector<particle> *particles, float dt) {
@@ -146,6 +147,91 @@ void rk4_integrator(std::vector<particle> *particles, float dt) {
         dt / 6.0f *
         (velocity_coefficients_1[i] + 2.0f * velocity_coefficients_2[i] +
          2.0f * velocity_coefficients_3[i] + velocity_coefficients_4[i]);
+  }
+}
+
+void leapfrog_integrator(std::vector<particle> *particles, float dt) {
+  std::vector<particle> &data = *particles;
+  std::vector<Eigen::Vector3f> half_step_velocities(data.size());
+
+#pragma omp parallel for
+  for (std::size_t i = 0; i < data.size(); ++i) {
+    half_step_velocities[i] =
+        data[i].velocity + 0.5f * dt * particle_acceleration(data, i);
+  }
+
+#pragma omp parallel for
+  for (std::size_t i = 0; i < data.size(); ++i) {
+    data[i].position += dt * half_step_velocities[i];
+  }
+
+#pragma omp parallel for
+  for (std::size_t i = 0; i < data.size(); ++i) {
+    data[i].velocity =
+        half_step_velocities[i] + 0.5f * dt * particle_acceleration(data, i);
+  }
+}
+
+void leapfrog_adaptive_integrator(std::vector<particle> *particles, float &dt) {
+  std::vector<particle> &data = *particles;
+  float time = 0;
+  float time_step = dt;
+  constexpr float tolerance = 1e-5f;
+
+  while (time < dt) {
+    time_step = std::min(dt - time, time_step);
+
+    std::vector<particle> system1 = data;
+    leapfrog_integrator(&system1, time_step);
+
+    std::vector<particle> system2 = data;
+    leapfrog_integrator(&system2, 0.5 * time_step);
+    leapfrog_integrator(&system2, 0.5 * time_step);
+
+    float local_position_squared_error = 0.0f;
+    float local_velocity_squared_error = 0.0f;
+    float mean_position = 0.0f;
+    for (std::size_t i = 0; i < data.size(); ++i) {
+      // mean_position += data[i].position.squaredNorm();
+      // local_position_squared_error +=
+      //     (system1[i].position - system2[i].position).squaredNorm();
+
+      // local_position_squared_error =
+      //     std::max(local_position_squared_error,
+      //              (system1[i].position - system2[i].position).norm() /
+      //                  (1e-7f + data[i].position.norm()));
+      local_position_squared_error =
+          std::max(local_position_squared_error,
+                   (system1[i].position - system2[i].position).norm());
+
+      local_velocity_squared_error +=
+          (system1[i].velocity - system2[i].velocity).squaredNorm();
+    }
+    const float inverse_size = 1.0f / data.size();
+    // local_position_squared_error *= inverse_size;
+    // local_position_squared_error = std::sqrt(local_position_squared_error);
+    local_velocity_squared_error *= inverse_size;
+    local_velocity_squared_error = std::sqrt(local_velocity_squared_error);
+    // mean_position = std::sqrt(mean_position);
+
+    if (local_position_squared_error < tolerance) {
+      time += time_step;
+      data = system2;
+      for (std::size_t i = 0; i < data.size(); ++i) {
+        data[i].position += system2[i].position - system1[i].position;
+        data[i].velocity += system2[i].velocity - system1[i].velocity;
+      }
+    }
+
+    time_step =
+        0.9f * time_step *
+        std::min(2.0f,
+                 std::max(0.3f, tolerance / local_position_squared_error));
+    dt = time_step;
+    // if (dt != time_step)
+    //   std::cout << "adaptive time step = " << time_step << " years"
+    //             << std::endl;
+    return;
   }
 }
 
