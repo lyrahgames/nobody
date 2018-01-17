@@ -1,60 +1,81 @@
 #include "glut_app.h"
+#include <GL/glut.h>
+#include <Eigen/Dense>
 #include <algorithm>
+#include <chrono>
+#include <cmath>
+#include <functional>
+#include <iostream>
 #include <list>
+#include <random>
+#include <vector>
+#include "camera.h"
 #include "energy.h"
+#include "euler_integrator.h"
 #include "particle_loader.h"
+#include "runge_kutta_integrator.h"
 
-namespace nobody {
-namespace glut_app {
+namespace {
 
-static constexpr unsigned char glut_key_p = 112;
-static constexpr unsigned char glut_key_l = 108;
+// const data
+constexpr float rad_to_degree_scale = 180.0f / M_PI;
+constexpr unsigned char glut_key_esc = 27;
+constexpr unsigned char glut_key_space = 32;
+constexpr unsigned char glut_key_p = 112;
+constexpr unsigned char glut_key_l = 108;
 
-static std::vector<particle> particle_vector;
-static float time_step = 1e-4f;
-// Eigen::Vector3f camera_position = Eigen::Vector3f(0.0f, 0.0f, 10.0f);
-// Eigen::Vector3f camera_direction;
-static float camera_altitude = 0.0f;
-static float camera_azimuth = 0.0f;
-static float camera_distance = 10.0f;
-// float camera_field_of_view = 45.0f;
-// Eigen::Vector3f world_center = Eigen::Vector3f(0.0f, 0.0f, 0.0f);
-// Eigen::Vector3f world_up = Eigen::Vector3f(0.0f, 1.0f, 0.0f);
-static float world_cube_size = 1.0f;
-// Eigen::Vector2i old_mouse(0, 0);
-static int key_modifiers;
-static int fps_frame_count = 0;
-static float fps_time_bound = 1.0f;
-static std::chrono::time_point<std::chrono::system_clock> fps_current_time =
+// static data
+std::vector<nobody::particle> particle_vector;
+float time_step = 0.005f;
+float camera_altitude = 0.0f;
+float camera_azimuth = 0.0f;
+float camera_distance = 10.0f;
+float world_cube_size = 1.0f;
+int key_modifiers;
+int fps_frame_count = 0;
+float fps_time_bound = 1.0f;
+std::chrono::time_point<std::chrono::system_clock> fps_current_time =
     std::chrono::system_clock::now();
-static std::chrono::time_point<std::chrono::system_clock> fps_last_time =
+std::chrono::time_point<std::chrono::system_clock> fps_last_time =
     std::chrono::system_clock::now();
+int old_mouse_x{};
+int old_mouse_y{};
+bool mouse_left_pressed = false;
+bool mouse_right_pressed = false;
+bool paused = false;
+bool render_particles = true;
+bool render_particle_paths = true;
+nobody::Camera camera(400, 400, M_PI_2);
+nobody::Orthonormal_frame world =
+    nobody::blender_orthonormal_frame(Eigen::Vector3f(0, 0, 0));
+float time = 0.0f;
+float time_tmp = 0.0f;
+std::vector<std::list<Eigen::Vector3f>> particle_path_data;
 
-static int old_mouse_x{};
-static int old_mouse_y{};
-static bool mouse_left_pressed = false;
-static bool mouse_right_pressed = false;
-static bool paused = false;
-static bool render_particles = true;
-static bool render_particle_paths = true;
-static Camera camera(400, 400, M_PI_2);
-static Orthonormal_frame world =
-    blender_orthonormal_frame(Eigen::Vector3f(0, 0, 0));
+// helper-function declarations and definitions
+void initialize(int argc, char** argv);
+void execute();
+void free();
+void render();
+void resize(int width, int height);
+void idle();
+void process_normal_keys(unsigned char key, int x, int y);
+void process_special_keys(int key, int x, int y);
+void process_mouse_buttons(int button, int button_state, int x, int y);
+void process_mouse_move(int x, int y);
+void process_passive_mouse_move(int x, int y);
+void process_mouse_wheel(int wheel, int direction, int x, int y);
+void compute_camera_frame();
 
-static float time = 0.0f;
-static float time_tmp = 0.0f;
-
-// static std::list<Eigen::Vector3f> particle_path;
-static std::vector<std::list<Eigen::Vector3f>> particle_path_data;
-
-void init(int argc, char** argv) {
+void initialize(int argc, char** argv) {
   glutInit(&argc, argv);
   glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA | GLUT_MULTISAMPLE);
   // glutInitWindowPosition(100, 100);
   glutInitWindowSize(400, 400);
   glutCreateWindow("nobody: n-body simulator");
 
-  glutCloseFunc(close);
+  // glutCloseFunc(free);
+  std::atexit(free);
   glutDisplayFunc(render);
   glutReshapeFunc(resize);
   glutIdleFunc(idle);
@@ -63,20 +84,22 @@ void init(int argc, char** argv) {
   glutMouseFunc(process_mouse_buttons);
   glutMotionFunc(process_mouse_move);
   glutPassiveMotionFunc(process_passive_mouse_move);
-  glutMouseWheelFunc(process_mouse_wheel);
+  // glutMouseWheelFunc(process_mouse_wheel);
 
-  glutSetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_GLUTMAINLOOP_RETURNS);
+  // glutSetOption(GLUT_ACTION_ON_WINDOW_CLOSE,
+  // GLUT_ACTION_GLUTMAINLOOP_RETURNS);
 
   glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
   glEnable(GL_MULTISAMPLE);
   glEnable(GL_POINT_SMOOTH);
+  glEnable(GL_DEPTH_TEST);
   glPointSize(8.0f);
   // glEnable(GL_DEPTH_TEST);
 
   if (2 != argc) {
     std::cout << "GEBE EINEN Dateipfad AN DU ARSCHLOCH!" << std::endl;
     // exit(-1);
-    // init random particle data
+    // initialize random particle data
     particle_vector.resize(100);
 
     std::mt19937 rng(std::random_device{}());
@@ -98,15 +121,15 @@ void init(int argc, char** argv) {
     // particle_vector[1].position = Eigen::Vector3f(2, 0, 0);
     // particle_vector[1].velocity = Eigen::Vector3f(0, -2, 0);
   } else {
-    particle_vector = particle_system(std::string(argv[1]));
+    particle_vector = nobody::particle_system(std::string(argv[1]));
   }
 
   particle_path_data.resize(particle_vector.size());
 }
 
-void exec() { glutMainLoop(); }
+void execute() { glutMainLoop(); }
 
-void close() {}
+void free() { std::cout << "Glut_app cleaned up." << std::endl; }
 
 void resize(int width, int height) {
   camera.set_screen_resolution(width, height);
@@ -160,6 +183,8 @@ void render() {
   glLineWidth(1.0f);
   glColor3f(0, 0, 0);
   glutWireCube(world_cube_size);
+
+  // we have to order the points
 
   if (render_particle_paths) {
     glLineWidth(1.5f);
@@ -244,7 +269,8 @@ void idle() {
 void process_normal_keys(unsigned char key, int x, int y) {
   switch (key) {
     case glut_key_esc:
-      glutLeaveMainLoop();
+      // glutLeaveMainLoop();
+      exit(0);
       break;
 
     case glut_key_space:
@@ -375,5 +401,15 @@ void compute_camera_frame() {
   glutPostRedisplay();
 }
 
-}  // namespace glut_app
-}  // nobody
+}  // namespace
+
+Glut_app::Glut_app(int argc, char** argv) {
+  static bool glut_initialized = false;
+  if (glut_initialized) return;
+  initialize(argc, argv);
+  glut_initialized = true;
+}
+
+Glut_app::Glut_app() : Glut_app(0, nullptr) {}
+
+void Glut_app::execute() { ::execute(); }
