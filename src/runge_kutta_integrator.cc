@@ -34,7 +34,7 @@ VectorF3 particle_acceleration(const particle *particles, int particle_count,
 void rk4_integrator(particle *particles, int particle_count, float dt) {
   std::vector<VectorF3> step(particle_count);
 
-  // #pragma omp parallel for schedule(guided)
+#pragma omp parallel for schedule(guided)
   for (int i = 0; i < particle_count; i++) {
     const VectorF3 current_position = particles[i].position;
 
@@ -74,6 +74,78 @@ void rk4_integrator(particle *particles, int particle_count, float dt) {
 
   for (int i = 0; i < particle_count; i++) {
     particles[i].position += step[i];
+  }
+}
+
+Eigen::Vector3f particle_acceleration(const std::vector<particle> &particles,
+                                      int index) {
+  VectorF3 acceleration(0, 0, 0);
+  for (const auto &p : particles) {
+    const VectorF3 direction = p.position - particles[index].position;
+    const float squared_distance = direction.squaredNorm();
+    const float distance = sqrtf(squared_distance);
+    const float scale =
+        p.mass / (distance * squared_distance + softening_param);
+    acceleration += scale * direction;
+  }
+  return -(acceleration *= gravitation_const);
+}
+
+void rk4_integrator(std::vector<particle> *particles, float dt) {
+  std::vector<particle> &data = *particles;
+  std::vector<particle> temporary_particles = *particles;
+  std::vector<Eigen::Vector3f> position_coefficients_1(data.size());
+  std::vector<Eigen::Vector3f> position_coefficients_2(data.size());
+  std::vector<Eigen::Vector3f> position_coefficients_3(data.size());
+  std::vector<Eigen::Vector3f> position_coefficients_4(data.size());
+  std::vector<Eigen::Vector3f> velocity_coefficients_1(data.size());
+  std::vector<Eigen::Vector3f> velocity_coefficients_2(data.size());
+  std::vector<Eigen::Vector3f> velocity_coefficients_3(data.size());
+  std::vector<Eigen::Vector3f> velocity_coefficients_4(data.size());
+
+#pragma omp parallel for
+  for (std::size_t i = 0; i < data.size(); ++i) {
+    position_coefficients_1[i] = data[i].velocity;
+    velocity_coefficients_1[i] = particle_acceleration(data, i);
+    temporary_particles[i].position =
+        data[i].position + 0.5f * dt * position_coefficients_1[i];
+  }
+
+#pragma omp parallel for
+  for (std::size_t i = 0; i < data.size(); ++i) {
+    position_coefficients_2[i] =
+        data[i].velocity + 0.5f * dt * velocity_coefficients_1[i];
+    velocity_coefficients_2[i] = particle_acceleration(temporary_particles, i);
+    temporary_particles[i].position =
+        data[i].position + 0.5f * dt * position_coefficients_2[i];
+  }
+
+#pragma omp parallel for
+  for (std::size_t i = 0; i < data.size(); ++i) {
+    position_coefficients_3[i] =
+        data[i].velocity + 0.5f * dt * velocity_coefficients_2[i];
+    velocity_coefficients_3[i] = particle_acceleration(temporary_particles, i);
+    temporary_particles[i].position =
+        data[i].position + dt * position_coefficients_3[i];
+  }
+
+#pragma omp parallel for
+  for (std::size_t i = 0; i < data.size(); ++i) {
+    position_coefficients_4[i] =
+        data[i].velocity + dt * velocity_coefficients_3[i];
+    velocity_coefficients_4[i] = particle_acceleration(temporary_particles, i);
+  }
+
+#pragma omp parallel for
+  for (std::size_t i = 0; i < data.size(); ++i) {
+    data[i].position +=
+        dt / 6.0f *
+        (position_coefficients_1[i] + 2.0f * position_coefficients_2[i] +
+         2.0f * position_coefficients_3[i] + position_coefficients_4[i]);
+    data[i].velocity +=
+        dt / 6.0f *
+        (velocity_coefficients_1[i] + 2.0f * velocity_coefficients_2[i] +
+         2.0f * velocity_coefficients_3[i] + velocity_coefficients_4[i]);
   }
 }
 

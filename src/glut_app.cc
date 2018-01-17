@@ -1,6 +1,7 @@
 #include "glut_app.h"
 #include <algorithm>
 #include <list>
+#include "energy.h"
 #include "particle_loader.h"
 
 namespace nobody {
@@ -10,7 +11,7 @@ static constexpr unsigned char glut_key_p = 112;
 static constexpr unsigned char glut_key_l = 108;
 
 static std::vector<particle> particle_vector;
-static float time_step = 0.00005f;
+static float time_step = 1e-5f;
 // Eigen::Vector3f camera_position = Eigen::Vector3f(0.0f, 0.0f, 10.0f);
 // Eigen::Vector3f camera_direction;
 static float camera_altitude = 0.0f;
@@ -70,31 +71,32 @@ void init(int argc, char** argv) {
   glEnable(GL_MULTISAMPLE);
   glEnable(GL_POINT_SMOOTH);
   glPointSize(8.0f);
+  // glEnable(GL_DEPTH_TEST);
 
   if (2 != argc) {
     std::cout << "GEBE EINEN Dateipfad AN DU ARSCHLOCH!" << std::endl;
     // exit(-1);
     // init random particle data
-    particle_vector.resize(100);
+    particle_vector.resize(1000);
 
     std::mt19937 rng(std::random_device{}());
     std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
 
     for (int i = 0; i < static_cast<int>(particle_vector.size()); ++i) {
       particle_vector[i].position =
-          Eigen::Vector3f(dist(rng), dist(rng), dist(rng));
-      particle_vector[i].velocity =
-          0.01f * Eigen::Vector3f(dist(rng), dist(rng), dist(rng));
-      particle_vector[i].mass = 0.1f / particle_vector.size();
+          1.0f * Eigen::Vector3f(dist(rng), dist(rng), dist(rng));
+      particle_vector[i].velocity = Eigen::Vector3f(0, -10, 0);
+      // 0.1f * Eigen::Vector3f(dist(rng), dist(rng), dist(rng));
+      particle_vector[i].mass = 10.0f;
     }
 
-    particle_vector[0].mass = 100.0f;
-    particle_vector[0].position = Eigen::Vector3f(-1, 0, 0);
-    particle_vector[0].velocity = Eigen::Vector3f(0, 0.02, 0);
+    particle_vector[0].mass = -1e6f;
+    particle_vector[0].position = Eigen::Vector3f(-2, 0, 0);
+    particle_vector[0].velocity = Eigen::Vector3f(0, 0, 0);
 
-    particle_vector[1].mass = 100.0f;
-    particle_vector[1].position = Eigen::Vector3f(1, 0, 0);
-    particle_vector[1].velocity = Eigen::Vector3f(0, -0.02, 0);
+    // particle_vector[1].mass = 100.0f;
+    // particle_vector[1].position = Eigen::Vector3f(1, 0, 0);
+    // particle_vector[1].velocity = Eigen::Vector3f(0, -0.02, 0);
   } else {
     particle_vector = particle_system(std::string(argv[1]));
   }
@@ -131,6 +133,11 @@ void render() {
               << std::endl;
     std::cout << "simulation time = " << time << " years" << std::endl;
     std::cout << "time step = " << time_step << " years" << std::endl;
+    const float kinetic = nobody::kinetic_energy(particle_vector);
+    const float potential = nobody::potential_energy(particle_vector);
+    std::cout << "kinetic energy = " << kinetic << std::endl
+              << "potential energy = " << potential << std::endl
+              << "total energy = " << kinetic + potential << std::endl;
     std::cout << std::endl;
     fps_frame_count = 0;
     fps_last_time = fps_current_time;
@@ -191,8 +198,9 @@ void idle() {
   if (paused) return;
   // euler_integrator(particle_vector.data(),
   //                  static_cast<int>(particle_vector.size()), time_step);
-  rk4_integrator(particle_vector.data(),
-                 static_cast<int>(particle_vector.size()), time_step);
+  // rk4_integrator(particle_vector.data(),
+  // static_cast<int>(particle_vector.size()), time_step);
+  rk4_integrator(&particle_vector, time_step);
 
   // world.set_origin(particle_vector[0].position);
 

@@ -10,6 +10,7 @@ add_executable(nobody
   src/particle_loader.cc
   src/orthonormal_frame.cc
   src/camera.cc
+  src/energy.cc
 )
 
 set_property(TARGET nobody PROPERTY CXX_STANDARD 14)

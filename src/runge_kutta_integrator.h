@@ -17,6 +17,10 @@ VectorF3 particle_acceleration(const particle *particles, int particle_count,
                                int index);
 void rk4_integrator(particle *particles, int particle_count, float dt);
 
+Eigen::Vector3f particle_acceleration(const std::vector<particle> &particles,
+                                      int index);
+void rk4_integrator(std::vector<particle> *particles, float dt);
+
 }  // namespace nobody
 
 #endif  // RUNGE_KUTTA_INTEGRATOR_H_
