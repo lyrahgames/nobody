@@ -172,6 +172,37 @@ void leapfrog_integrator(std::vector<particle> *particles, float dt) {
   }
 }
 
+void euler_integrator(std::vector<particle> *particles, float dt) {
+  std::vector<particle> &system = *particles;
+  std::vector<Eigen::Vector3f> new_velocities(system.size());
+
+#pragma omp parallel for
+  for (std::size_t i = 0; i < system.size(); ++i) {
+    new_velocities[i] =
+        system[i].velocity + dt * particle_acceleration(*particles, i);
+  }
+
+#pragma omp parallel for
+  for (std::size_t i = 0; i < system.size(); ++i) {
+    system[i].position += dt * system[i].velocity;
+    system[i].velocity = new_velocities[i];
+  }
+}
+
+void symplectic_euler_integrator(std::vector<particle> *particles, float dt) {
+  std::vector<particle> &system = *particles;
+
+#pragma omp parallel for
+  for (std::size_t i = 0; i < system.size(); ++i) {
+    system[i].velocity += dt * particle_acceleration(system, i);
+  }
+
+#pragma omp parallel for
+  for (std::size_t i = 0; i < system.size(); ++i) {
+    system[i].position += dt * system[i].velocity;
+  }
+}
+
 void leapfrog_adaptive_integrator(std::vector<particle> *particles, float &dt) {
   std::vector<particle> &data = *particles;
   float time = 0;
@@ -187,6 +218,70 @@ void leapfrog_adaptive_integrator(std::vector<particle> *particles, float &dt) {
     std::vector<particle> system2 = data;
     leapfrog_integrator(&system2, 0.5 * time_step);
     leapfrog_integrator(&system2, 0.5 * time_step);
+
+    float local_position_squared_error = 0.0f;
+    float local_velocity_squared_error = 0.0f;
+    float mean_position = 0.0f;
+    for (std::size_t i = 0; i < data.size(); ++i) {
+      // mean_position += data[i].position.squaredNorm();
+      // local_position_squared_error +=
+      //     (system1[i].position - system2[i].position).squaredNorm();
+
+      // local_position_squared_error =
+      //     std::max(local_position_squared_error,
+      //              (system1[i].position - system2[i].position).norm() /
+      //                  (1e-7f + data[i].position.norm()));
+      local_position_squared_error =
+          std::max(local_position_squared_error,
+                   (system1[i].position - system2[i].position).norm());
+
+      local_velocity_squared_error +=
+          (system1[i].velocity - system2[i].velocity).squaredNorm();
+    }
+    const float inverse_size = 1.0f / data.size();
+    // local_position_squared_error *= inverse_size;
+    // local_position_squared_error = std::sqrt(local_position_squared_error);
+    local_velocity_squared_error *= inverse_size;
+    local_velocity_squared_error = std::sqrt(local_velocity_squared_error);
+    // mean_position = std::sqrt(mean_position);
+
+    if (local_position_squared_error < tolerance) {
+      time += time_step;
+      data = system2;
+      for (std::size_t i = 0; i < data.size(); ++i) {
+        data[i].position += system2[i].position - system1[i].position;
+        data[i].velocity += system2[i].velocity - system1[i].velocity;
+      }
+    }
+
+    time_step =
+        0.9f * time_step *
+        std::min(2.0f,
+                 std::max(0.3f, tolerance / local_position_squared_error));
+    dt = time_step;
+    // if (dt != time_step)
+    //   std::cout << "adaptive time step = " << time_step << " years"
+    //             << std::endl;
+    return;
+  }
+}
+
+void adaptive_integrator(std::vector<particle> *particles, float &dt,
+                         integrator_type integrator) {
+  std::vector<particle> &data = *particles;
+  float time = 0;
+  float time_step = dt;
+  constexpr float tolerance = 1e-5f;
+
+  while (time < dt) {
+    time_step = std::min(dt - time, time_step);
+
+    std::vector<particle> system1 = data;
+    integrator(&system1, time_step);
+
+    std::vector<particle> system2 = data;
+    integrator(&system2, 0.5 * time_step);
+    integrator(&system2, 0.5 * time_step);
 
     float local_position_squared_error = 0.0f;
     float local_velocity_squared_error = 0.0f;

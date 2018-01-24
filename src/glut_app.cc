@@ -23,10 +23,15 @@ constexpr unsigned char glut_key_esc = 27;
 constexpr unsigned char glut_key_space = 32;
 constexpr unsigned char glut_key_p = 112;
 constexpr unsigned char glut_key_l = 108;
+constexpr unsigned char glut_key_a = 97;
+constexpr unsigned char glut_key_e = 101;
+constexpr unsigned char glut_key_s = 115;
+constexpr unsigned char glut_key_r = 114;
 
 // static data
 std::vector<nobody::particle> particle_vector;
-float time_step = 0.005f;
+std::vector<nobody::particle> particle_start_data;
+float time_step = 0.0005f;
 float camera_altitude = 0.0f;
 float camera_azimuth = 0.0f;
 float camera_distance = 10.0f;
@@ -42,15 +47,19 @@ int old_mouse_x{};
 int old_mouse_y{};
 bool mouse_left_pressed = false;
 bool mouse_right_pressed = false;
-bool paused = false;
+bool paused = true;
 bool render_particles = true;
-bool render_particle_paths = true;
+int render_particle_paths = 1;
 nobody::Camera camera(400, 400, M_PI_2);
 nobody::Orthonormal_frame world =
     nobody::blender_orthonormal_frame(Eigen::Vector3f(0, 0, 0));
 float time = 0.0f;
 float time_tmp = 0.0f;
 std::vector<std::list<Eigen::Vector3f>> particle_path_data;
+
+nobody::integrator_type integrator = nobody::leapfrog_integrator;
+bool use_adaptive_integrator = false;
+int selection = 0;
 
 // helper-function declarations and definitions
 void initialize(int argc, char** argv);
@@ -92,12 +101,12 @@ void initialize(int argc, char** argv) {
   glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
   glEnable(GL_MULTISAMPLE);
   glEnable(GL_POINT_SMOOTH);
-  glEnable(GL_DEPTH_TEST);
+  // glEnable(GL_DEPTH_TEST);
   glPointSize(8.0f);
   // glEnable(GL_DEPTH_TEST);
 
   if (2 != argc) {
-    std::cout << "GEBE EINEN Dateipfad AN DU ARSCHLOCH!" << std::endl;
+    // std::cout << "GEBE EINEN Dateipfad AN DU ARSCHLOCH!" << std::endl;
     // exit(-1);
     // initialize random particle data
     particle_vector.resize(100);
@@ -124,7 +133,13 @@ void initialize(int argc, char** argv) {
     particle_vector = nobody::particle_system(std::string(argv[1]));
   }
 
+  particle_start_data = particle_vector;
+
   particle_path_data.resize(particle_vector.size());
+  for (std::size_t i = 0; i < particle_path_data.size(); ++i) {
+    particle_path_data[i].clear();
+    particle_path_data[i].push_back(particle_vector[i].position);
+  }
 }
 
 void execute() { glutMainLoop(); }
@@ -144,28 +159,6 @@ void resize(int width, int height) {
 }
 
 void render() {
-  // compute fps
-  fps_current_time = std::chrono::system_clock::now();
-  fps_frame_count++;
-  const float delta_time =
-      std::chrono::duration<float>(fps_current_time - fps_last_time).count();
-  if (delta_time >= 1.0f) {
-    std::cout << "frame time: "
-              << delta_time / static_cast<float>(fps_frame_count)
-              << "s\tfps: " << static_cast<float>(fps_frame_count) / delta_time
-              << std::endl;
-    std::cout << "simulation time = " << time << " years" << std::endl;
-    std::cout << "time step = " << time_step << " years" << std::endl;
-    const float kinetic = nobody::kinetic_energy(particle_vector);
-    const float potential = nobody::potential_energy(particle_vector);
-    std::cout << "kinetic energy = " << kinetic << std::endl
-              << "potential energy = " << potential << std::endl
-              << "total energy = " << kinetic + potential << std::endl;
-    std::cout << std::endl;
-    fps_frame_count = 0;
-    fps_last_time = fps_current_time;
-  }
-
   // compute camera position
   // camera_direction = Eigen::Vector3f(
   //     cosf(camera_azimuth) * cosf(camera_altitude), sinf(camera_altitude),
@@ -186,7 +179,7 @@ void render() {
 
   // we have to order the points
 
-  if (render_particle_paths) {
+  if (1 == render_particle_paths) {
     glLineWidth(1.5f);
     for (std::size_t i = 0; i < particle_path_data.size(); ++i) {
       const auto& particle_path = particle_path_data[i];
@@ -195,6 +188,13 @@ void render() {
       glVertex3fv(particle_vector[i].position.data());
       glEnd();
     }
+  } else if (2 == render_particle_paths) {
+    glLineWidth(1.5f);
+    const auto& particle_path = particle_path_data[selection];
+    glBegin(GL_LINE_STRIP);
+    for (const auto& point : particle_path) glVertex3fv(point.data());
+    glVertex3fv(particle_vector[selection].position.data());
+    glEnd();
   }
 
   if (render_particles) {
@@ -221,13 +221,42 @@ void render() {
 
 void idle() {
   if (paused) return;
+
+  // compute fps
+  fps_current_time = std::chrono::system_clock::now();
+  fps_frame_count++;
+  const float delta_time =
+      std::chrono::duration<float>(fps_current_time - fps_last_time).count();
+  if (delta_time >= 1.0f) {
+    std::cout << "frame time: "
+              << delta_time / static_cast<float>(fps_frame_count)
+              << "s\tfps: " << static_cast<float>(fps_frame_count) / delta_time
+              << std::endl;
+    std::cout << "simulation time = " << time << " years" << std::endl;
+    std::cout << "time step = " << time_step << " years" << std::endl;
+    const float kinetic = nobody::kinetic_energy(particle_vector);
+    const float potential = nobody::potential_energy(particle_vector);
+    std::cout << "kinetic energy = " << kinetic << std::endl
+              << "potential energy = " << potential << std::endl
+              << "total energy = " << kinetic + potential << std::endl;
+    std::cout << std::endl;
+    fps_frame_count = 0;
+    fps_last_time = fps_current_time;
+  }
+
+  if (use_adaptive_integrator)
+    adaptive_integrator(&particle_vector, time_step, integrator);
+  else
+    integrator(&particle_vector, time_step);
+
   // euler_integrator(particle_vector.data(),
   //                  static_cast<int>(particle_vector.size()), time_step);
   // rk4_integrator(particle_vector.data(),
   // static_cast<int>(particle_vector.size()), time_step);
   // rk4_integrator(&particle_vector, time_step);
   // leapfrog_integrator(&particle_vector, time_step);
-  leapfrog_adaptive_integrator(&particle_vector, time_step);
+  // leapfrog_adaptive_integrator(&particle_vector, time_step);
+  // euler_integrator(&particle_vector, time_step);
 
   // world.set_origin(particle_vector[0].position);
 
@@ -242,24 +271,26 @@ void idle() {
   for (std::size_t i = 0; i < particle_path_data.size(); ++i) {
     auto& particle_path = particle_path_data[i];
 
-    if (particle_path.size() < 2)
-      particle_path.push_back(particle_vector[i].position);
-    else {
-      auto p = particle_path.end();
-      --p;
-      --p;
-      const Eigen::Vector3f last = particle_path.back() - *p;
-      const Eigen::Vector3f next =
-          particle_vector[i].position - particle_path.back();
-      const float distance = next.norm();
-      const float cos_angle = next.dot(last) / (distance * last.norm());
-      if (cos_angle < 0.9999f) {
+    if (particle_path.back() != particle_vector[i].position) {
+      if (particle_path.size() < 2) {
         particle_path.push_back(particle_vector[i].position);
-        // std::cout << "added position to path: " << particle_path.size()
-        // << std::endl;
-      }
+      } else {
+        auto p = particle_path.end();
+        --p;
+        --p;
+        const Eigen::Vector3f last = particle_path.back() - *p;
+        const Eigen::Vector3f next =
+            particle_vector[i].position - particle_path.back();
+        const float distance = next.norm();
+        const float cos_angle = next.dot(last) / (distance * last.norm());
+        if (cos_angle < 0.9999f) {
+          particle_path.push_back(particle_vector[i].position);
+          // std::cout << "added position to path: " << particle_path.size()
+          // << std::endl;
+        }
 
-      if (particle_path.size() > 512) particle_path.pop_front();
+        if (particle_path.size() > 512) particle_path.pop_front();
+      }
     }
   }
 
@@ -267,9 +298,84 @@ void idle() {
 }
 
 void process_normal_keys(unsigned char key, int x, int y) {
+  key_modifiers = glutGetModifiers();
+
   switch (key) {
+    case '0':
+      selection = 0;
+      break;
+    case '1':
+      selection = 1;
+      break;
+    case '2':
+      selection = 2;
+      break;
+    case '3':
+      selection = 3;
+      break;
+    case '4':
+      selection = 4;
+      break;
+    case '5':
+      selection = 5;
+      break;
+    case '6':
+      selection = 6;
+      break;
+    case '7':
+      selection = 7;
+      break;
+    case '8':
+      selection = 8;
+      break;
+    case '9':
+      selection = 9;
+      break;
+
+    case 'x' - 0x60:
+      particle_vector[selection].mass = 0.0f;
+      std::cout << "Mass of particle " << selection << " set to 0 EM."
+                << std::endl;
+      break;
+
+    case 'm' - 0x60:
+      particle_vector[selection].mass *= 1.5f;
+      std::cout << "Mass of particle " << selection << " set to "
+                << particle_vector[selection].mass << " EM." << std::endl;
+      break;
+
+    case 'L':
+      std::cout << "Integrator set to leapfrog_integrator." << std::endl;
+      integrator = nobody::leapfrog_integrator;
+      break;
+
+    case 'A':
+      use_adaptive_integrator = !use_adaptive_integrator;
+      if (use_adaptive_integrator)
+        std::cout << "Integration is set to adaptive time step mode."
+                  << std::endl;
+      else
+        std::cout << "Integrator is set to non-adaptive time step mode."
+                  << std::endl;
+      break;
+
+    case 'R':
+      std::cout << "Integrator set to rk4_integrator." << std::endl;
+      integrator = nobody::rk4_integrator;
+      break;
+
+    case 'E':
+      integrator = nobody::euler_integrator;
+      std::cout << "Integrator set to euler_integrator." << std::endl;
+      break;
+
+    case 'S':
+      integrator = nobody::symplectic_euler_integrator;
+      std::cout << "Integrator set to symplectic_euler_integrator."
+                << std::endl;
+      break;
+
     case glut_key_esc:
-      // glutLeaveMainLoop();
       exit(0);
       break;
 
@@ -277,16 +383,34 @@ void process_normal_keys(unsigned char key, int x, int y) {
       paused = !paused;
       break;
 
-    case glut_key_p:
+    case 'p':
       render_particles = !render_particles;
       break;
 
-    case glut_key_l:
-      render_particle_paths = !render_particle_paths;
+    case 'l':
+      render_particle_paths = (render_particle_paths + 1) % 3;
+      break;
+
+    case 'r':
+      particle_vector = particle_start_data;
+      for (std::size_t i = 0; i < particle_path_data.size(); ++i) {
+        particle_path_data[i].clear();
+        particle_path_data[i].push_back(particle_vector[i].position);
+      }
+      break;
+
+    case 'e':
+      const float kinetic = nobody::kinetic_energy(particle_vector);
+      const float potential = nobody::potential_energy(particle_vector);
+      std::cout << "kinetic energy = " << kinetic << std::endl
+                << "potential energy = " << potential << std::endl
+                << "total energy = " << kinetic + potential << std::endl;
       break;
   }
 
-  glutPostRedisplay();
+  selection = std::min(static_cast<int>(particle_vector.size()) - 1, selection);
+  std::cout << "selection = " << selection << std::endl;
+  compute_camera_frame();
 }
 
 void process_special_keys(int key, int x, int y) {
@@ -321,7 +445,7 @@ void process_special_keys(int key, int x, int y) {
       break;
   }
 
-  glutPostRedisplay();
+  compute_camera_frame();
 }
 
 void process_mouse_buttons(int button, int button_state, int x, int y) {
@@ -353,6 +477,7 @@ void process_mouse_move(int x, int y) {
       } else if (mouse_right_pressed) {
         time_step += 0.02f * y_difference * time_step;
         if (time_step < 1e-6f) time_step = 1e-6f;
+        std::cout << "time step = " << time_step << " years" << std::endl;
       }
       break;
 
