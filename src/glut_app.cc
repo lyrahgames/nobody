@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <fstream>
 #include <functional>
 #include <iostream>
 #include <list>
@@ -60,6 +61,9 @@ std::vector<std::list<Eigen::Vector3f>> particle_path_data;
 nobody::integrator_type integrator = nobody::leapfrog_integrator;
 bool use_adaptive_integrator = false;
 int selection = 0;
+std::fstream file;
+int iteration = 0;
+bool track_results = false;
 
 // helper-function declarations and definitions
 void initialize(int argc, char** argv);
@@ -109,7 +113,7 @@ void initialize(int argc, char** argv) {
     // std::cout << "GEBE EINEN Dateipfad AN DU ARSCHLOCH!" << std::endl;
     // exit(-1);
     // initialize random particle data
-    particle_vector.resize(100);
+    particle_vector.resize(2000);
 
     std::mt19937 rng(std::random_device{}());
     std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
@@ -118,17 +122,22 @@ void initialize(int argc, char** argv) {
       particle_vector[i].position =
           1.5f * Eigen::Vector3f(dist(rng), dist(rng), dist(rng));
       particle_vector[i].velocity = Eigen::Vector3f(0, -5, 0);
+      // particle_vector[i].velocity = Eigen::Vector3f(0, 0, 0);
+      // particle_vector[i].velocity =
+      //     particle_vector[i].position.cross(Eigen::Vector3f(0, 0, 1));
+      // particle_vector[i].velocity.normalize();
+      // particle_vector[i].velocity *= 0.5f;
       // 0.1f * Eigen::Vector3f(dist(rng), dist(rng), dist(rng));
       particle_vector[i].mass = 100.0f * (0.5 * dist(rng) + 1.1f);
     }
 
     particle_vector[0].mass = 1e6f;
-    particle_vector[0].position = Eigen::Vector3f(-2, 0, 0);
-    particle_vector[0].velocity = Eigen::Vector3f(0, 0, 0);
+    particle_vector[0].position = Eigen::Vector3f(-4, 0, 0);
+    particle_vector[0].velocity = Eigen::Vector3f(0, 1.1, 0);
 
     // particle_vector[1].mass = 1e6f;
-    // particle_vector[1].position = Eigen::Vector3f(2, 0, 0);
-    // particle_vector[1].velocity = Eigen::Vector3f(0, -2, 0);
+    // particle_vector[1].position = Eigen::Vector3f(10, 0, 0);
+    // particle_vector[1].velocity = Eigen::Vector3f(0, -1, 0);
   } else {
     particle_vector = nobody::particle_system(std::string(argv[1]));
   }
@@ -140,6 +149,8 @@ void initialize(int argc, char** argv) {
     particle_path_data[i].clear();
     particle_path_data[i].push_back(particle_vector[i].position);
   }
+
+  file.open("results.txt", std::ios::out | std::ios::trunc);
 }
 
 void execute() { glutMainLoop(); }
@@ -204,7 +215,7 @@ void render() {
 
       const float brightness = std::min(0.7f, 1.0f / (distance * distance));
 
-      glPointSize(std::max(0.005f / camera.pixel_size() *
+      glPointSize(std::max(0.007f / camera.pixel_size() *
                                (cbrtf(particle_vector[i].mass) / (distance)),
                            5.0f));
 
@@ -227,6 +238,12 @@ void idle() {
   fps_frame_count++;
   const float delta_time =
       std::chrono::duration<float>(fps_current_time - fps_last_time).count();
+
+  const float kinetic = nobody::kinetic_energy(particle_vector);
+  const float potential = nobody::potential_energy(particle_vector);
+  const Eigen::Vector3f angular_momentum =
+      nobody::angular_momentum(particle_vector);
+
   if (delta_time >= 1.0f) {
     std::cout << "frame time: "
               << delta_time / static_cast<float>(fps_frame_count)
@@ -234,11 +251,13 @@ void idle() {
               << std::endl;
     std::cout << "simulation time = " << time << " years" << std::endl;
     std::cout << "time step = " << time_step << " years" << std::endl;
-    const float kinetic = nobody::kinetic_energy(particle_vector);
-    const float potential = nobody::potential_energy(particle_vector);
     std::cout << "kinetic energy = " << kinetic << std::endl
               << "potential energy = " << potential << std::endl
               << "total energy = " << kinetic + potential << std::endl;
+    std::cout << "angular momentum = (" << angular_momentum.transpose() << ")"
+              << std::endl
+              << "angular momentum norm = " << angular_momentum.norm()
+              << std::endl;
     std::cout << std::endl;
     fps_frame_count = 0;
     fps_last_time = fps_current_time;
@@ -246,8 +265,26 @@ void idle() {
 
   if (use_adaptive_integrator)
     adaptive_integrator(&particle_vector, time_step, integrator);
-  else
+  else {
     integrator(&particle_vector, time_step);
+
+    // time_tmp += time_step;
+    // if (time_tmp >= 5.0f) {
+    //   time += time_tmp;
+    //   time_tmp = 0.0f;
+    //   // paused = true;
+    //   // std::cout << "time = " << time << " years" << std::endl;
+    // }
+    iteration++;
+    time += time_step;
+
+    if (track_results) {
+      file << iteration << "\t" << time << "\t" << kinetic << "\t" << potential
+           << "\t" << kinetic + potential << "\t"
+           << angular_momentum.transpose() << "\t" << angular_momentum.norm()
+           << "\n";
+    }
+  }
 
   // euler_integrator(particle_vector.data(),
   //                  static_cast<int>(particle_vector.size()), time_step);
@@ -259,14 +296,6 @@ void idle() {
   // euler_integrator(&particle_vector, time_step);
 
   // world.set_origin(particle_vector[0].position);
-
-  time_tmp += time_step;
-  if (time_tmp >= 5.0f) {
-    time += time_tmp;
-    time_tmp = 0.0f;
-    // paused = true;
-    // std::cout << "time = " << time << " years" << std::endl;
-  }
 
   for (std::size_t i = 0; i < particle_path_data.size(); ++i) {
     auto& particle_path = particle_path_data[i];
@@ -397,6 +426,25 @@ void process_normal_keys(unsigned char key, int x, int y) {
         particle_path_data[i].clear();
         particle_path_data[i].push_back(particle_vector[i].position);
       }
+      time = 0.0f;
+      file.close();
+      file.open("results.txt", std::ios::out | std::ios::trunc);
+      break;
+
+    case 't':
+      track_results = !track_results;
+      std::cout << "results tracking set to: " << std::boolalpha
+                << track_results << std::endl;
+      break;
+
+    case 'v':
+      world = nobody::opengl_orthonormal_frame(Eigen::Vector3f::Zero());
+      compute_camera_frame();
+      break;
+
+    case 'w':
+      world = nobody::blender_orthonormal_frame(Eigen::Vector3f::Zero());
+      compute_camera_frame();
       break;
 
     case 'e':
@@ -404,7 +452,49 @@ void process_normal_keys(unsigned char key, int x, int y) {
       const float potential = nobody::potential_energy(particle_vector);
       std::cout << "kinetic energy = " << kinetic << std::endl
                 << "potential energy = " << potential << std::endl
-                << "total energy = " << kinetic + potential << std::endl;
+                << "total energy = " << kinetic + potential << std::endl
+                << "time = " << time << std::endl;
+
+      const Eigen::Vector3f relative_position =
+          particle_vector[selection].position - particle_vector[0].position;
+      const float distance = relative_position.norm();
+      const float potential_selection =
+          -nobody::gravitation_const * particle_vector[0].mass *
+          particle_vector[selection].mass / distance;
+      const float kinetic_selection =
+          0.5f * particle_vector[selection].mass *
+          particle_vector[selection].velocity.squaredNorm();
+      const float energy_selection = kinetic_selection + potential_selection;
+      const Eigen::Vector3f angular_momentum_selection =
+          particle_vector[selection].mass *
+          relative_position.cross(particle_vector[selection].velocity);
+      const float angular_momentum_norm_selection =
+          angular_momentum_selection.norm();
+      const float eccentricity_selection = std::sqrt(
+          1 + (2.0 * energy_selection * angular_momentum_norm_selection *
+               angular_momentum_norm_selection) /
+                  (nobody::gravitation_const * nobody::gravitation_const *
+                   particle_vector[0].mass * particle_vector[0].mass *
+                   particle_vector[selection].mass *
+                   particle_vector[selection].mass *
+                   particle_vector[selection].mass));
+      const float semi_major_axis_selection =
+          -0.5f * nobody::gravitation_const * particle_vector[0].mass *
+          particle_vector[selection].mass / energy_selection;
+
+      std::cout << "selection data: " << std::endl
+                << "kinetic energy = " << kinetic_selection << std::endl
+                << "potential energy = " << potential_selection << std::endl
+                << "total energy = " << energy_selection << std::endl
+                << "angular momentum = "
+                << angular_momentum_selection.transpose() << std::endl
+                << "angular_momentum_norm_selection = "
+                << angular_momentum_norm_selection << std::endl
+                << "semi-major axis = " << semi_major_axis_selection << " AE"
+                << std::endl
+                << "eccentricity = " << eccentricity_selection << std::endl
+                << std::endl;
+
       break;
   }
 

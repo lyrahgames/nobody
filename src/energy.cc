@@ -1,4 +1,6 @@
 #include "energy.h"
+
+#include <Eigen/Dense>
 #include "euler_integrator.h"
 
 namespace nobody {
@@ -18,6 +20,14 @@ float potential_energy(const std::vector<particle>& particles) {
     }
   }
   return -gravitation_const * energy;
+}
+
+Eigen::Vector3f angular_momentum(const std::vector<particle>& particles) {
+  Eigen::Vector3f result(0, 0, 0);
+  for (const auto& particle : particles) {
+    result += particle.mass * particle.position.cross(particle.velocity);
+  }
+  return result;
 }
 
 }  // namespace nobody
