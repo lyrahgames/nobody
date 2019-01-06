@@ -1,0 +1,31 @@
+\documentclass{standalone}
+\usepackage[utf8]{inputenc}
+\usepackage{pgf,tikz}
+\usepackage{mathrsfs}
+\usetikzlibrary{arrows}
+\usetikzlibrary{arrows.meta}
+\pagestyle{empty}
+\begin{document}
+\definecolor{uuuuuu}{rgb}{0.26666666666666666,0.26666666666666666,0.26666666666666666}
+\definecolor{ududff}{rgb}{0.30196078431372547,0.30196078431372547,1.}
+\begin{tikzpicture}[line cap=round,line join=round,>=Stealth,x=2.0462391425927655cm,y=2.0462391425927655cm]
+\clip(-0.3678213184820818,-0.171139439228066) rectangle (4.122506487087144,1.7836662903366842);
+\draw [line width=1.pt,dash pattern=on 4pt off 4pt] (1.,1.5)-- (3.,0.5);
+\draw [->,line width=1.5pt] (1.,1.5) -- (1.495336284061682,1.2523318579691591);
+\draw [->,line width=1.5pt] (3.,0.5) -- (2.4962528147703367,0.7518735926148317);
+\draw [->,line width=1.pt] (0.,0.) -- (1.,1.5);
+\draw [->,line width=1.pt] (0.,0.) -- (3.,0.5);
+\begin{scriptsize}
+\draw [fill=ududff] (1.,1.5) circle (2.5pt);
+\draw[color=ududff] (0.7322680983650238,1.47286035843936) node {$m_1$};
+\draw [fill=ududff] (3.,0.5) circle (2.5pt);
+\draw[color=ududff] (2.9079096216462883,0.18874111349515163) node {$m_2$};
+\draw[color=black] (1.730118721824852,1.5628304966201645) node {$\vec{F}(\vec{r}_1,\vec{r}_2)$};
+\draw[color=black] (3.299431899983348,0.8839649085286403) node {$\vec{F}(\vec{r}_2,\vec{r}_1)  = -\vec{F}(\vec{r}_1,\vec{r}_2)$};
+\draw [fill=uuuuuu] (0.,0.) circle (2.0pt);
+\draw[color=uuuuuu] (-0.1633437317075269,0.10286052704983834) node {$O$};
+\draw[color=black] (0.9430740302623474,0.9657559432384624) node {$\vec{r}_1$};
+\draw[color=black] (1.5583575489342256,0.4177560106826537) node {$\vec{r}_2$};
+\end{scriptsize}
+\end{tikzpicture}
+\end{document}
