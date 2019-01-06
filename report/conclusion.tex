@@ -1,0 +1,25 @@
+\section{Fazit} % (fold)
+\label{sec:fazit}
+
+  % Wir haben gut gearbeitet und denken, dass man uns fürstlich entlohnen sollte.
+  Das Projekt diente dem Erstellen eines Programms zur numerischen Integration des $n$-Körper-Problems.
+  Dazu wurden verschiedene Integrationsalgorithmen implementiert, Strukturen zur Beschreibung von Partikelsystemen erstellt, eine Ein- und Ausgaberoutine geschrieben, sowie eine grafische Oberfläche zur Visualisierung der Bahnverläufe und User-Interaktion programmiert.
+  Wir wählten für das $n$-Körper-Problem typische Integrationsmethoden, wie das explizite Euler-, das symplektische Euler-, das Leapfrog- und das RK4-Verfahren, und verglichen diese.
+  Um die Methoden hinsichtlich ihrer Stabilität zu überprüfen wurde das gut bekannte Szenario Erde im Schwerefeld der Sonne simuliert.
+  Die Auswertung zeigte typische Eigenschaften der Integratoren auf.
+  Das explizite Euler-Verfahren neigte als Integrator erster Ordnung zur stetigen Erhöhung der Energie und damit Bahnvergrößerung, während der RK4 als explizites Verfahren vierter Ordnung eine kontinuierliche Abnahme von Energie und Bahnradius zur Folge hatte.
+  Die beiden symplektischen Verfahren verhielten sich aufgrund ihrer Energieerhaltung auch noch bei sehr groben Zeitschritten als außerordentlich robust.
+
+  Im weiteren Verlauf wurde ein analytisch lösbares Dreikörperszenario simuliert.
+  Es zeigte sich hierbei, dass die analytische Lösung keinesfalls ein stabiles Gleichgesicht beschrieb, weswegen kleinste numerische Ungenauigkeiten bereits nach wenigen Zyklen in chaotischem Verhalten resultierten.
+
+  Die Simulation des Sonnensystems, sowie die etlicher bekannter Zweikörperprobleme lieferte Ergebnisse, die sich hervorragend mit den theoretischen Vorüberlegungen deckten. Somit bestätigte sich erneut die korrekte Arbeitsweise aller Integratoren.
+
+  Bei der Analyse sehr großer Teilchensysteme erwies sich der Einsatz einer adaptiven Schrittweitensteuerung als wichtiger Garant für das Berechnen realistischer Bahnkurven.
+
+  Zusammenfassend kann man sagen, dass die numerische $n$-Körpersimulation eine essenzielle Methode zur Berechnung und Analyse von Vielteilchensystemen darstellt.
+  Für nicht-chaotische Systeme stellt es zudem eine Werkzeug zur Vorhersage dar, die weit außerhalb der Möglichkeiten analytischer Methoden liegen.
+
+
+
+% section fazit (end)
