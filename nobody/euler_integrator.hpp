@@ -2,8 +2,8 @@
 #define NOBODY_EULER_INTEGRATOR_H_
 
 #include <omp.h>
-#include "particle.h"
-#include "util.h"
+#include <nobody/particle.hpp>
+#include <nobody/util.hpp>
 
 namespace nobody {
 

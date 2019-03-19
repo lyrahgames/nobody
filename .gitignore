@@ -1,2 +1,10 @@
-*.sublime-workspace
-build/*
+*
+
+!data
+!docs
+!nobody
+!tests
+
+!README.md
+!CMakeLists.txt
+!.gitignore

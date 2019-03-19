@@ -1,9 +1,9 @@
 #ifndef NOBODY_PARTICLE_LOADER_H_
 #define NOBODY_PARTICLE_LOADER_H_
 
+#include <nobody/particle.hpp>
 #include <string>
 #include <vector>
-#include "particle.h"
 
 namespace nobody {
 

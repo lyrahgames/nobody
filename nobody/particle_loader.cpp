@@ -1,6 +1,6 @@
-#include "particle_loader.h"
 #include <fstream>
 #include <iostream>
+#include <nobody/particle_loader.hpp>
 #include <stdexcept>
 
 namespace nobody {

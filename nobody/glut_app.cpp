@@ -1,4 +1,5 @@
-#include "glut_app.h"
+#include <nobody/glut_app.hpp>
+
 #include <GL/glut.h>
 #include <Eigen/Dense>
 #include <algorithm>
@@ -10,11 +11,12 @@
 #include <list>
 #include <random>
 #include <vector>
-#include "camera.h"
-#include "energy.h"
-#include "euler_integrator.h"
-#include "particle_loader.h"
-#include "runge_kutta_integrator.h"
+
+#include <nobody/camera.hpp>
+#include <nobody/energy.hpp>
+#include <nobody/euler_integrator.hpp>
+#include <nobody/particle_loader.hpp>
+#include <nobody/runge_kutta_integrator.hpp>
 
 namespace {
 

@@ -1,5 +1,5 @@
 #include <iostream>
-#include "glut_app.h"
+#include <nobody/glut_app.hpp>
 
 int main(int argc, char** argv) {
   std::cout << "nobody: n-body simulator:" << std::endl << std::endl;

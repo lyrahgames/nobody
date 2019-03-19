@@ -1,7 +1,8 @@
-#include "energy.h"
+#include <nobody/energy.hpp>
 
 #include <Eigen/Dense>
-#include "euler_integrator.h"
+
+#include <nobody/euler_integrator.hpp>
 
 namespace nobody {
 

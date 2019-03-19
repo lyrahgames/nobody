@@ -1,7 +1,7 @@
 #ifndef NOBODY_PARTICLE_H_
 #define NOBODY_PARTICLE_H_
 
-#include "util.h"
+#include <nobody/util.hpp>
 
 namespace nobody {
 

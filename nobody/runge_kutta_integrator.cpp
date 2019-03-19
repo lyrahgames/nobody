@@ -1,5 +1,5 @@
-#include "runge_kutta_integrator.h"
 #include <iostream>
+#include <nobody/runge_kutta_integrator.hpp>
 
 namespace nobody {
 

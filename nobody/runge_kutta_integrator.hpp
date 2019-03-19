@@ -3,8 +3,9 @@
 
 #include <omp.h>
 #include <vector>
-#include "euler_integrator.h"
-#include "particle.h"
+
+#include <nobody/euler_integrator.hpp>
+#include <nobody/particle.hpp>
 
 namespace nobody {
 

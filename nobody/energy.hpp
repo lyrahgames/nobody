@@ -1,8 +1,8 @@
 #ifndef NOBODY_ENERGY_H_
 #define NOBODY_ENERGY_H_
 
+#include <nobody/particle.hpp>
 #include <vector>
-#include "particle.h"
 
 namespace nobody {
 
