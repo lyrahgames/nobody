@@ -19,5 +19,6 @@ else()
   )
 endif()
 
+add_subdirectory(libnobody)
 add_subdirectory(nobody)
 add_subdirectory(tests)
