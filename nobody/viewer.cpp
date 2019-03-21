@@ -88,8 +88,8 @@ void viewer::mouseMoveEvent(QMouseEvent* event) {
 
 void viewer::wheelEvent(QWheelEvent* event) {
   constexpr float scale_factor = -0.003;
-  constexpr float min_distance = 1e-4f;
-  eye_distance_ += scale_factor * event->angleDelta().y() * eye_distance_;
+  constexpr float min_distance = 1e-3f;
+  eye_distance_ *= exp(scale_factor * event->angleDelta().y());
   eye_distance_ =
       (eye_distance_ < min_distance) ? (min_distance) : (eye_distance_);
   compute_look_at();

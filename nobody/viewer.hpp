@@ -42,6 +42,7 @@ class viewer : public QOpenGLWidget {
   float eye_azimuth_{};
   float eye_altitude_{};
   glm::vec3 origin_{};
+
   glm::vec3 up_{};
   glm::vec3 right_{};
   glm::vec3 direction_{};
