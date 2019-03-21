@@ -31,3 +31,29 @@ target_link_libraries(nobody
     GLUT::GLUT
     OpenMP::OpenMP_CXX
 )
+
+find_package(Qt5 COMPONENTS Widgets REQUIRED)
+add_executable(viewer)
+target_sources(viewer
+  PRIVATE
+    viewer_main.cpp
+    viewer.hpp
+    viewer.cpp
+)
+target_compile_features(viewer
+  PRIVATE
+    cxx_std_17
+)
+target_include_directories(viewer
+  PRIVATE
+    ..
+)
+target_link_libraries(viewer
+  PRIVATE
+    OpenGL::GL
+    Qt5::Widgets
+)
+set_target_properties(viewer
+  PROPERTIES
+    AUTOMOC TRUE
+)
