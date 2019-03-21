@@ -11,6 +11,9 @@ int main(int argc, char** argv) {
   // }
 
   QApplication application(argc, argv);
+  QSurfaceFormat fmt;
+  fmt.setSamples(10);
+  QSurfaceFormat::setDefaultFormat(fmt);
   nobody::viewer viewer{};
   return application.exec();
 }

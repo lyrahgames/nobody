@@ -28,7 +28,10 @@ viewer::viewer(QWidget* parent) : QOpenGLWidget(parent) {
 
 viewer::~viewer() = default;
 
-void viewer::initializeGL() { glClearColor(1, 1, 1, 1); }
+void viewer::initializeGL() {
+  glEnable(GL_MULTISAMPLE);
+  glClearColor(1, 1, 1, 1);
+}
 
 void viewer::resizeGL(int width, int height) {
   glMatrixMode(GL_PROJECTION);

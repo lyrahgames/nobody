@@ -11,6 +11,8 @@
 namespace nobody {
 
 class viewer : public QOpenGLWidget {
+  Q_OBJECT
+
  public:
   viewer(QWidget* parent = nullptr);
   virtual ~viewer();
@@ -53,6 +55,8 @@ class viewer : public QOpenGLWidget {
   glm::vec3 right_{};
   glm::vec3 direction_{};
 
+ private:
+  // data
   std::vector<float> data;
 };
 
