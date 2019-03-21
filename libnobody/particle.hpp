@@ -20,6 +20,15 @@ class particle {
   particle& operator=(particle&&) = default;
   ~particle() = default;
 
+  explicit particle(real_type mass) : mass_{validated_mass(mass)} {}
+  explicit particle(const vector_type& position) noexcept
+      : position_{position} {}
+  particle(const vector_type& position, const vector_type& velocity) noexcept
+      : position_{position}, velocity_{velocity} {}
+  particle(const vector_type& position, const vector_type& velocity,
+           real_type mass)
+      : position_{position}, velocity_{velocity}, mass_{validated_mass(mass)} {}
+
   const auto& position() const noexcept { return position_; }
   auto& position() noexcept { return position_; }
   particle& position(const vector_type& p) & noexcept {
@@ -44,18 +53,20 @@ class particle {
 
   auto mass() const noexcept { return mass_; }
   particle& mass(real_type m) & {
-    if (m <= 0)
-      throw std::invalid_argument(
-          "Mass of a particle cannot be lower or equal to zero!");
-    mass_ = m;
+    mass_ = validated_mass(m);
     return *this;
   }
   particle mass(real_type m) && {
-    if (m <= 0)
+    mass_ = validated_mass(m);
+    return std::move(*this);
+  }
+
+ private:
+  static auto validated_mass(real_type mass) {
+    if (mass <= 0)
       throw std::invalid_argument(
           "Mass of a particle cannot be lower or equal to zero!");
-    mass_ = m;
-    return std::move(*this);
+    return mass;
   }
 
  private:
