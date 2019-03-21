@@ -33,6 +33,7 @@ target_link_libraries(nobody
 )
 
 find_package(Qt5 COMPONENTS Widgets REQUIRED)
+find_package(glm REQUIRED)
 add_executable(viewer)
 target_sources(viewer
   PRIVATE
@@ -51,6 +52,7 @@ target_include_directories(viewer
 target_link_libraries(viewer
   PRIVATE
     OpenGL::GL
+    glm
     Qt5::Widgets
 )
 set_target_properties(viewer
