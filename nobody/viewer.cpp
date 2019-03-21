@@ -1,7 +1,7 @@
 #include <nobody/viewer.hpp>
 
+#include <algorithm>
 #include <cmath>
-#include <iostream>
 #include <random>
 
 #include <QApplication>
@@ -34,9 +34,9 @@ void viewer::resizeGL(int width, int height) {
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
   glViewport(0, 0, width, height);
-  glLoadMatrixf(glm::value_ptr(
-      glm::perspective(glm::degrees(vertical_fov_),
-                       static_cast<float>(width) / height, 0.01f, 1000.f)));
+  glLoadMatrixf(glm::value_ptr(glm::perspective(
+      glm::degrees(vertical_fov_), static_cast<float>(width) / height,
+      min_distance_, max_distance_)));
   glMatrixMode(GL_MODELVIEW);
   compute_look_at();
 }
@@ -61,38 +61,23 @@ void viewer::mouseMoveEvent(QMouseEvent* event) {
   const auto x_difference = event->x() - old_mouse_x_;
   const auto y_difference = event->y() - old_mouse_y_;
 
-  if (event->buttons() == Qt::LeftButton) {
-    constexpr float max_altitude = 0.5 * pi_ - 1e-5;
-    constexpr float scale_factor = 0.01;
+  switch (event->buttons()) {
+    case Qt::LeftButton:
+      rotate_on_screen(x_difference, y_difference);
+      break;
 
-    eye_azimuth_ += x_difference * scale_factor;
-    eye_altitude_ += y_difference * scale_factor;
-
-    if (eye_altitude_ > max_altitude)
-      eye_altitude_ = max_altitude;
-    else if (eye_altitude_ < -max_altitude)
-      eye_altitude_ = -max_altitude;
-
-  } else if (event->buttons() == Qt::RightButton) {
-    const float pixel_size = 2 * tan(0.5 * vertical_fov_) / height();
-    origin_ += pixel_size * eye_distance_ *
-               (-static_cast<float>(x_difference) * right_ +
-                static_cast<float>(y_difference) * up_);
+    case Qt::RightButton:
+      move_origin_on_screen(x_difference, y_difference);
+      break;
   }
 
   old_mouse_x_ = event->x();
   old_mouse_y_ = event->y();
-
-  compute_look_at();
 }
 
 void viewer::wheelEvent(QWheelEvent* event) {
-  constexpr float scale_factor = -0.003;
-  constexpr float min_distance = 1e-3f;
-  eye_distance_ *= exp(scale_factor * event->angleDelta().y());
-  eye_distance_ =
-      (eye_distance_ < min_distance) ? (min_distance) : (eye_distance_);
-  compute_look_at();
+  constexpr float scale_factor = 0.003;
+  zoom(scale_factor * event->angleDelta().y());
 }
 
 void viewer::keyPressEvent(QKeyEvent* event) {
@@ -113,6 +98,34 @@ void viewer::compute_look_at() {
   glLoadIdentity();
   glLoadMatrixf(glm::value_ptr(glm::lookAt(position, origin_, world_up)));
   update();
+}
+
+float viewer::pixel_size() const noexcept {
+  return 2 * tan(0.5 * vertical_fov_) / height();
+}
+
+void viewer::move_origin_on_screen(int x_difference,
+                                   int y_difference) noexcept {
+  origin_ += pixel_size() * eye_distance_ *
+             (-static_cast<float>(x_difference) * right_ +
+              static_cast<float>(y_difference) * up_);
+  compute_look_at();
+}
+
+void viewer::rotate_on_screen(int x_difference, int y_difference) noexcept {
+  constexpr float max_altitude = 0.5 * pi_ - 1e-5;
+  constexpr float scale_factor = 0.01;
+
+  eye_azimuth_ += x_difference * scale_factor;
+  eye_altitude_ += y_difference * scale_factor;
+  eye_altitude_ = clamp(eye_altitude_, -max_altitude, max_altitude);
+  compute_look_at();
+}
+
+void viewer::zoom(float scale) noexcept {
+  eye_distance_ *= exp(-scale);
+  eye_distance_ = clamp(eye_distance_, min_distance_, max_distance_);
+  compute_look_at();
 }
 
 }  // namespace nobody
